@@ -1,0 +1,3 @@
+STOP SLAVE;
+CHANGE MASTER TO master_host='$DB_MASTER_HOST', master_user='$MYSQL_REPLICA_USER', master_password='$MYSQL_REPLICA_PASS' ;
+START SLAVE;

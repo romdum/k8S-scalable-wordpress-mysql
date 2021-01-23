@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-master
+  serviceName: database-master
+  template:
+    metadata:
+      labels:
+        app: database-master
+    spec:
+      containers:
+        - name: database-master
+          image: romdum/mysql-master:5.7
+          imagePullPolicy: Always
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: DATABASE_NAME
+            - name: MYSQL_REPLICA_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_REPLICA_USER
+            - name: MYSQL_REPLICA_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_REPLICA_PASS
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - mountPath: "/var/lib/mysql"
+              name: database
+              subPath: mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: database
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

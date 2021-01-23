@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - database-master/database-statefulset.yml
+  - database-master/database-service.yml
+  - database-slave/database-statefulset.yml
+  - database-slave/database-service.yml
+  - wordpress-backend/wordpress-deployment.yml
+  - wordpress-backend/wordpress-service.yml
+  - wordpress-frontend/wordpress-deployment.yml
+  - wordpress-frontend/wordpress-service.yml
+  - ingress.yml
+
+secretGenerator:
+  - name: database-secret
+    envs:
+      - database.env

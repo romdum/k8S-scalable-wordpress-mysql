@@ -1,0 +1,319 @@
+apiVersion: v1
+data:
+  DATABASE_NAME: d29yZHByZXNz
+  DB_MASTER_HOST: ZGF0YWJhc2UtbWFzdGVyLndvcmRwcmVzcy1oYS5zdmMuY2x1c3Rlci5sb2NhbA==
+  DB_SLAVE_HOST: ZGF0YWJhc2Utc2xhdmUud29yZHByZXNzLWhhLnN2Yy5jbHVzdGVyLmxvY2Fs
+  MYSQL_REPLICA_PASS: cGFzc19yZXBsaWNh
+  MYSQL_REPLICA_USER: dXNlcl9yZXBsaWNh
+  MYSQL_ROOT_PASSWORD: Y2hhbmdlbWU=
+  WORDPRESS_DB_USER: cm9vdA==
+  WORDPRESS_TABLE_PREFIX: d3Bf
+kind: Secret
+metadata:
+  name: database-secret-ckbg6dm5hk
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-master
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: database-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-slave
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: database-slave
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-backend
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 80
+  selector:
+    app: wordpress-backend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-frontend
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: 80
+  selector:
+    app: wordpress-frontend
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: wordpress-backend
+  name: wordpress-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress-backend
+  template:
+    metadata:
+      labels:
+        app: wordpress-backend
+    spec:
+      containers:
+      - env:
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: WORDPRESS_DB_USER
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_HOST
+          valueFrom:
+            secretKeyRef:
+              key: DB_MASTER_HOST
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE_NAME
+              name: database-secret-ckbg6dm5hk
+        image: wordpress:5.6
+        imagePullPolicy: Always
+        name: wordpress-backend
+        ports:
+        - containerPort: 80
+          name: web
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 150m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: wordpress-frontend
+  name: wordpress-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress-frontend
+  template:
+    metadata:
+      labels:
+        app: wordpress-frontend
+    spec:
+      containers:
+      - env:
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: WORDPRESS_DB_USER
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_HOST
+          valueFrom:
+            secretKeyRef:
+              key: DB_SLAVE_HOST
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: database-secret-ckbg6dm5hk
+        - name: WORDPRESS_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE_NAME
+              name: database-secret-ckbg6dm5hk
+        image: wordpress:5.6
+        imagePullPolicy: Always
+        name: wordpress-frontend
+        ports:
+        - containerPort: 80
+          name: web
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 150m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-master
+  serviceName: database-master
+  template:
+    metadata:
+      labels:
+        app: database-master
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: database-secret-ckbg6dm5hk
+        - name: DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE_NAME
+              name: database-secret-ckbg6dm5hk
+        - name: MYSQL_REPLICA_USER
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_REPLICA_USER
+              name: database-secret-ckbg6dm5hk
+        - name: MYSQL_REPLICA_PASS
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_REPLICA_PASS
+              name: database-secret-ckbg6dm5hk
+        image: romdum/mysql-master:5.7
+        imagePullPolicy: Always
+        name: database-master
+        ports:
+        - containerPort: 3306
+          name: mysql
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: database
+          subPath: mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: database
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database-slave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-slave
+  serviceName: database-slave
+  template:
+    metadata:
+      labels:
+        app: database-slave
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: database-secret-ckbg6dm5hk
+        - name: DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE_NAME
+              name: database-secret-ckbg6dm5hk
+        - name: DB_MASTER_HOST
+          valueFrom:
+            secretKeyRef:
+              key: DB_MASTER_HOST
+              name: database-secret-ckbg6dm5hk
+        - name: MYSQL_REPLICA_USER
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_REPLICA_USER
+              name: database-secret-ckbg6dm5hk
+        - name: MYSQL_REPLICA_PASS
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_REPLICA_PASS
+              name: database-secret-ckbg6dm5hk
+        image: romdum/mysql-slave:5.7
+        imagePullPolicy: Always
+        name: database-slave
+        ports:
+        - containerPort: 3306
+          name: mysql
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-backend-ingress
+spec:
+  rules:
+  - host: wp.k8s.local
+    http:
+      paths:
+      - backend:
+          service:
+            name: wordpress-frontend
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            name: wordpress-backend
+            port:
+              number: 80
+        path: /wp-admin
+        pathType: Prefix
+      - backend:
+          service:
+            name: wordpress-backend
+            port:
+              number: 80
+        path: /wp-login
+        pathType: Prefix

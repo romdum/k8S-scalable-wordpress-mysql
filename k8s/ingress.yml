@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-backend-ingress
+spec:
+  rules:
+    - host: wp.k8s.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress-frontend
+                port:
+                  number: 80
+          - path: /wp-admin
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress-backend
+                port:
+                  number: 80
+          - path: /wp-login
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress-backend
+                port:
+                  number: 80

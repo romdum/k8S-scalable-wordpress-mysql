@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database-slave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-slave
+  serviceName: database-slave
+  template:
+    metadata:
+      labels:
+        app: database-slave
+    spec:
+      containers:
+        - name: database-slave
+          image: romdum/mysql-slave:5.7
+          imagePullPolicy: Always
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: DATABASE_NAME
+            - name: DB_MASTER_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: DB_MASTER_HOST
+            - name: MYSQL_REPLICA_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_REPLICA_USER
+            - name: MYSQL_REPLICA_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: MYSQL_REPLICA_PASS
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+

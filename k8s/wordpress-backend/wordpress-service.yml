@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-frontend
+spec:
+  selector:
+    app: wordpress-frontend
+  ports:
+    - name: web
+      port: 80
+      targetPort: 80
+  type: ClusterIP
